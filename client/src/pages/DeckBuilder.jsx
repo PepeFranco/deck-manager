@@ -24,6 +24,23 @@ function sortIds(ids, byId) {
   });
 }
 
+function extraOrder(card) {
+  if (!card) return 3;
+  if (card.type.includes("Fusion")) return 0;
+  if (card.type.includes("Synchro")) return 1;
+  if (card.type.includes("XYZ")) return 2;
+  return 3;
+}
+
+function sortExtraIds(ids, byId) {
+  return [...ids].sort((a, b) => {
+    const ca = byId.get(a), cb = byId.get(b);
+    const od = extraOrder(ca) - extraOrder(cb);
+    if (od !== 0) return od;
+    return (ca?.name || "").localeCompare(cb?.name || "");
+  });
+}
+
 function tcgToCollectionDate(tcgDate) {
   if (!tcgDate) return undefined;
   const d = new Date(tcgDate);
@@ -179,7 +196,7 @@ function AlphaView({ main, side, extra, byId, ownedCounts, onRemoveMain, onRemov
   });
 
   const combined = useMemo(() => alphaSorted([...main, ...side]), [main, side, byId]);
-  const sortedExtra = useMemo(() => alphaSorted([...extra]), [extra, byId]);
+  const sortedExtra = useMemo(() => sortExtraIds([...extra], byId), [extra, byId]);
 
   const onRemove = (id) => {
     if (main.includes(id)) onRemoveMain(id);
@@ -237,13 +254,15 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
   useEffect(() => {
     if (!query.trim() || cards.length === 0) { setSearchResults([]); return; }
     const q = query.toLowerCase();
+    const isExtraType = (c) => c.type?.includes("Fusion") || c.type?.includes("Synchro") || c.type?.includes("XYZ");
     setSearchResults(
       cards
         .filter((c) => format.getStatus(c.name, c.tcg_date) !== "not-legal")
+        .filter((c) => addSection === "extra" ? isExtraType(c) : !isExtraType(c))
         .filter((c) => c.name.toLowerCase().includes(q))
         .slice(0, 24)
     );
-  }, [query, cards, format]);
+  }, [query, cards, format, addSection]);
 
   const handleRemoveOne = useCallback((section, id) => {
     if (!deck) return;
@@ -371,7 +390,7 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
             />
             <DeckSection
               label={SECTION_LABELS.extra}
-              ids={sortIds(deck.extra, byId)}
+              ids={sortExtraIds(deck.extra, byId)}
               count={deck.extra.length}
               byId={byId}
               ownedCounts={ownedCounts}
@@ -413,7 +432,7 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
         <div className="w-72 shrink-0 border-l border-gray-200 bg-white flex flex-col">
           {/* Panel tabs */}
           <div className="flex border-b border-gray-100">
-            {["search", "records"].map((tab) => (
+            {["search", "records", "notes"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setPanelTab(tab)}
@@ -423,7 +442,7 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
               >
                 {tab === "records"
                   ? `Records (${deck.records?.length || 0})`
-                  : "Add Cards"}
+                  : tab === "search" ? "Add Cards" : "Notes"}
               </button>
             ))}
           </div>
@@ -495,6 +514,17 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
                 {!query && <p className="text-gray-300 text-xs text-center py-8">Type to search cards</p>}
               </div>
             </>
+          )}
+
+          {panelTab === "notes" && (
+            <div className="p-4 flex flex-col flex-1">
+              <textarea
+                className="w-full flex-1 resize-none border border-gray-300 rounded-md px-3 py-2 text-sm text-black placeholder-gray-400 focus:outline-none focus:border-black"
+                placeholder="Add notes about this deck — strategy, matchups, card choices..."
+                defaultValue={deck.notes || ""}
+                onBlur={(e) => updateDeck(name, { ...deck, notes: e.target.value })}
+              />
+            </div>
           )}
 
           {panelTab === "records" && (() => {

@@ -307,7 +307,7 @@ app.put('/api/decks/:format/:name', (req, res) => {
     const dir = deckBaseDir(format);
     const ydkPath = path.join(dir, `${name}.ydk`);
     if (!fs.existsSync(ydkPath)) return res.status(404).json({ error: 'Deck not found' });
-    const { main = [], extra = [], side = [], newName, built, records } = req.body;
+    const { main = [], extra = [], side = [], newName, built, records, notes } = req.body;
 
     if (newName && newName !== name) {
       const safeName = newName.trim().replace(/[^a-zA-Z0-9 _\-().]/g, '');
@@ -315,7 +315,7 @@ app.put('/api/decks/:format/:name', (req, res) => {
       fs.writeFileSync(newYdkPath, buildYdk(main, extra, side));
       fs.unlinkSync(ydkPath);
       const oldMeta = readMeta(format, name);
-      const newMeta = { ...oldMeta, ...(built !== undefined && { built }), ...(records !== undefined && { records }) };
+      const newMeta = { ...oldMeta, ...(built !== undefined && { built }), ...(records !== undefined && { records }), ...(notes !== undefined && { notes }) };
       writeMeta(format, safeName, newMeta);
       const oldMetaFilePath = metaPath(format, name);
       if (fs.existsSync(oldMetaFilePath)) fs.unlinkSync(oldMetaFilePath);
@@ -326,6 +326,7 @@ app.put('/api/decks/:format/:name', (req, res) => {
     const meta = readMeta(format, name);
     if (built !== undefined) meta.built = built;
     if (records !== undefined) meta.records = records;
+    if (notes !== undefined) meta.notes = notes;
     writeMeta(format, name, meta);
     res.json({ name, main, extra, side, format, ...meta });
   } catch (err) {
@@ -354,7 +355,7 @@ app.put('/api/decks/:name', (req, res) => {
     const name = req.params.name;
     const ydkPath = path.join(DECKS_DIR, `${name}.ydk`);
     if (!fs.existsSync(ydkPath)) return res.status(404).json({ error: 'Deck not found' });
-    const { main = [], extra = [], side = [], newName, built, records } = req.body;
+    const { main = [], extra = [], side = [], newName, built, records, notes } = req.body;
 
     if (newName && newName !== name) {
       const safeName = newName.trim().replace(/[^a-zA-Z0-9 _\-().]/g, '');
@@ -362,7 +363,7 @@ app.put('/api/decks/:name', (req, res) => {
       fs.writeFileSync(newYdkPath, buildYdk(main, extra, side));
       fs.unlinkSync(ydkPath);
       const oldMeta = readMeta(null, name);
-      const newMeta = { ...oldMeta, ...(built !== undefined && { built }), ...(records !== undefined && { records }) };
+      const newMeta = { ...oldMeta, ...(built !== undefined && { built }), ...(records !== undefined && { records }), ...(notes !== undefined && { notes }) };
       writeMeta(null, safeName, newMeta);
       const oldMetaFilePath = metaPath(null, name);
       if (fs.existsSync(oldMetaFilePath)) fs.unlinkSync(oldMetaFilePath);
@@ -373,6 +374,7 @@ app.put('/api/decks/:name', (req, res) => {
     const meta = readMeta(null, name);
     if (built !== undefined) meta.built = built;
     if (records !== undefined) meta.records = records;
+    if (notes !== undefined) meta.notes = notes;
     writeMeta(null, name, meta);
     res.json({ name, main, extra, side, ...meta });
   } catch (err) {

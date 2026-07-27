@@ -74,6 +74,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
   }, [cards]);
 
   const [bought, setBought] = useState(loadBought);
+  const [copied, setCopied] = useState(false);
   const [addingCard, setAddingCard] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
   const [viewMode, setViewMode] = useState("grid");
@@ -208,6 +209,20 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {pending.length > 0 && (
+            <button
+              onClick={() => {
+                const text = pending.map((c) => `${c.needed}x ${c.name}`).join("\n");
+                navigator.clipboard.writeText(text).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                });
+              }}
+              className="border border-gray-300 hover:border-black text-gray-600 hover:text-black px-3 py-2 rounded-md text-sm transition-colors"
+            >
+              {copied ? "Copied!" : "Copy list"}
+            </button>
+          )}
           <div className="flex border border-gray-200 rounded-md overflow-hidden text-xs">
             {[["grid", "Grid"], ["list", "List"]].map(([mode, label]) => (
               <button

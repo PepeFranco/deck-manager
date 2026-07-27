@@ -6,6 +6,7 @@ const links = [
   { to: "/decks", label: "My Decks" },
   { to: "/collection", label: "Collection" },
   { to: "/buylist", label: "Buylist" },
+  { to: "/pool", label: "Card Pool" },
 ];
 
 export default function NavBar({ formatState }) {
