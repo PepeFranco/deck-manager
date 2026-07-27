@@ -1,0 +1,16 @@
+{
+  "name": "deck-manager-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "db:update": "node scripts/downloadCards.js",
+    "db:images": "node scripts/downloadImages.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
+    "cors": "^2.8.5"
+  }
+}

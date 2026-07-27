@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.DS_Store
+server/data/cards.json
+server/data/images/
+*.ydk
+*.meta.json
