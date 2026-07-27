@@ -106,6 +106,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
   };
 
   const toggleBuild = async (e, deck) => {
+    e.preventDefault();
     e.stopPropagation();
     await updateDeck(deck.name, {
       main: deck.main,
@@ -250,7 +251,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
                     {deck.built ? "Unbuild" : "Build"}
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${deck.name}"?`)) deleteDeck(deck.name); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Delete "${deck.name}"?`)) deleteDeck(deck.name); }}
                     className="text-gray-300 hover:text-red-500 text-xs transition-colors opacity-0 group-hover:opacity-100"
                   >
                     Delete
