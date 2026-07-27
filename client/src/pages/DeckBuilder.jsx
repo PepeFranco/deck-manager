@@ -146,7 +146,7 @@ function DeckSection({ label, ids, count, byId, ownedCounts, onRemove, format })
 
               {/* Copy count badge */}
               {copies > 1 && (
-                <span className="absolute bottom-1 right-1 bg-black/80 text-white text-xs font-bold px-1 py-0.5 rounded leading-none">
+                <span className="absolute bottom-1 right-1 bg-black/80 text-white text-sm font-bold px-2.5 py-1 rounded leading-none">
                   ×{copies}
                 </span>
               )}

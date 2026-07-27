@@ -293,7 +293,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
                       {item.name}
                     </div>
                   )}
-                  <span className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">
+                  <span className="absolute bottom-1 right-1 bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded leading-none">
                     ×{item.needed}
                   </span>
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">

@@ -30,7 +30,7 @@ export default function CardTile({ card, ownedCount = 0, onAdd, addLabel = "Add"
           </div>
         )}
         {ownedCount > 0 && (
-          <span className="absolute top-1 right-1 bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded">
+          <span className="absolute bottom-1 right-1 bg-black text-white text-sm font-bold px-2.5 py-1 rounded leading-none">
             ×{ownedCount}
           </span>
         )}
