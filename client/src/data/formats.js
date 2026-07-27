@@ -700,6 +700,10 @@ export const HAT = mkFormat({
   ],
 });
 
-export const FORMATS = [EDISON, DINO_RABBIT, REDU, HAT];
+// ── All — HAT banlist + cutoff, no format filter on decks ──────────────────
+export const ALL = { ...HAT, id: "all", label: "All" };
+
+export const FORMATS = [ALL, EDISON, DINO_RABBIT, REDU, HAT];
 export const FORMATS_BY_ID = Object.fromEntries(FORMATS.map((f) => [f.id, f]));
 export const DEFAULT_FORMAT_ID = "edison";
+export const RETRO_FORMAT_IDS = ["edison", "dino-rabbit", "redu", "hat"];

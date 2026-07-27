@@ -71,7 +71,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
   const consumed = useMemo(() => buildConsumedPool(decks, byId), [decks, byId]);
 
   const formatDecks = useMemo(
-    () => decks.filter((d) => !d.format || d.format === format?.id),
+    () => format?.id === "all" ? decks : decks.filter((d) => !d.format || d.format === format?.id),
     [decks, format]
   );
 
@@ -94,7 +94,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
     if (!newName.trim()) return;
     setCreateError("");
     try {
-      const deckName = await createDeck(newName.trim(), format?.id);
+      const deckName = await createDeck(newName.trim(), format?.id === "all" ? undefined : format?.id);
       setNewName("");
       setCreating(false);
       navigate(format?.id
@@ -186,12 +186,15 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
           const totalGames = totalW + totalL;
           const winRate = totalGames > 0 ? Math.round((totalW / totalGames) * 100) : null;
           return (
-            <div
+            <a
               key={deck.name}
-              onClick={() => navigate(deck.format
+              href={deck.format
                 ? `/decks/${deck.format}/${encodeURIComponent(deck.name)}`
-                : `/decks/${encodeURIComponent(deck.name)}`)}
-              className={`border rounded-lg p-5 hover:border-black transition-colors cursor-pointer group bg-white ${deck.built ? "border-black" : "border-gray-200"}`}
+                : `/decks/${encodeURIComponent(deck.name)}`}
+              onClick={(e) => { e.preventDefault(); navigate(deck.format
+                ? `/decks/${deck.format}/${encodeURIComponent(deck.name)}`
+                : `/decks/${encodeURIComponent(deck.name)}`); }}
+              className={`block border rounded-lg p-5 hover:border-black transition-colors cursor-pointer group bg-white no-underline ${deck.built ? "border-black" : "border-gray-200"}`}
             >
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
@@ -254,7 +257,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
                   </button>
                 </div>
               </div>
-            </div>
+            </a>
           );
         })}
       </div>

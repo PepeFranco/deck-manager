@@ -80,7 +80,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
   const [viewMode, setViewMode] = useState("grid");
   const [showSimultaneous, setShowSimultaneous] = useState(false);
 
-  const unbuiltDecks = decks.filter((d) => !d.built && (!d.format || d.format === format?.id));
+  const unbuiltDecks = decks.filter((d) => !d.built && (format?.id === "all" || !d.format || d.format === format?.id));
 
   // Cards consumed by built decks
   const consumed = useMemo(() => {
