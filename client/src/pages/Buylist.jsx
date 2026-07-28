@@ -79,7 +79,6 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
   const [copied, setCopied] = useState(false);
   const [addingCard, setAddingCard] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
-  const [viewMode, setViewMode] = useState("grid");
   const [showSimultaneous, setShowSimultaneous] = useState(false);
 
   const unbuiltDecks = decks.filter((d) => !d.built && (format?.id === "all" || !d.format || d.format === format?.id));
@@ -262,17 +261,6 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
               {copied ? "Copied!" : "Copy list"}
             </button>
           )}
-          <div className="flex border border-gray-200 rounded-md overflow-hidden text-xs">
-            {[["grid", "Grid"], ["list", "List"]].map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-3 py-1.5 transition-colors ${viewMode === mode ? "bg-black text-white" : "text-gray-500 hover:text-black"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-black">{pending.length}</p>
             <p className="text-xs text-gray-400">cards to buy</p>
@@ -297,52 +285,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
             <span className="text-xs text-gray-400">{groupCards.length} card{groupCards.length !== 1 ? "s" : ""}</span>
           </div>
 
-          {viewMode === "list" ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left">
-                    <th className="pb-3 text-gray-400 font-medium text-xs pr-4">Card</th>
-                    <th className="pb-3 text-gray-400 font-medium text-xs pr-4">Need</th>
-                    <th className="pb-3 text-gray-400 font-medium text-xs pr-4">Decks</th>
-                    <th className="pb-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {groupCards.map((item) => (
-                    <tr key={item.name} className="group hover:bg-gray-50">
-                      <td className="py-2.5 pr-4 text-black font-medium">{item.name}</td>
-                      <td className="py-2.5 pr-4 text-gray-600 text-xs">×{item.needed}</td>
-                      <td className="py-2.5 pr-4 text-gray-400 text-xs">{item.decks.join(", ")}</td>
-                      <td className="py-2.5">
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => setAddingCard(item.name)}
-                            className="text-xs bg-black hover:bg-gray-800 text-white px-2 py-1 rounded-md transition-colors"
-                          >
-                            Bought
-                          </button>
-                          <button
-                            onClick={() => markBought(item.name)}
-                            className="text-xs border border-gray-300 hover:border-black text-gray-600 hover:text-black px-2 py-1 rounded-md transition-colors"
-                          >
-                            Skip
-                          </button>
-                          <button
-                            onClick={() => navigate(`/decks?missing=${encodeURIComponent(item.name)}&incomplete=1`)}
-                            className="text-xs border border-gray-300 hover:border-black text-gray-600 hover:text-black px-2 py-1 rounded-md transition-colors"
-                          >
-                            Decks
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(153px,1fr))] gap-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(153px,1fr))] gap-2">
               {groupCards.map((item) => {
                 const card = byName.get(item.name);
                 return (

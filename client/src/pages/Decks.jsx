@@ -313,18 +313,17 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
           >
             {filterCount > 0 ? `Cards (${filterCount})` : "Filter cards"}
           </button>
-          <button
-            onClick={() => setCompletionFilter((v) => v === "complete" ? null : "complete")}
-            className={`px-3 py-2 rounded-md text-sm transition-colors border ${completionFilter === "complete" ? "bg-black text-white border-black" : "border-gray-300 text-gray-600 hover:border-black hover:text-black"}`}
-          >
-            Complete
-          </button>
-          <button
-            onClick={() => setCompletionFilter((v) => v === "incomplete" ? null : "incomplete")}
-            className={`px-3 py-2 rounded-md text-sm transition-colors border ${completionFilter === "incomplete" ? "bg-black text-white border-black" : "border-gray-300 text-gray-600 hover:border-black hover:text-black"}`}
-          >
-            Incomplete
-          </button>
+          <div className="flex border border-gray-300 rounded-md overflow-hidden">
+            {[["all", "All"], ["complete", "Complete"], ["incomplete", "Incomplete"]].map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setCompletionFilter(val === "all" ? null : val)}
+                className={`px-3 py-2 text-sm transition-colors ${(completionFilter ?? "all") === val ? "bg-black text-white" : "text-gray-600 hover:text-black"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           {(() => {
             const hasRecords = formatDecks.some((d) => (d.records || []).length > 0);
             return (
