@@ -16,6 +16,36 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
     [decks, format, isAll]
   );
 
+  // Cards consumed by built decks (for accurate missing calculation)
+  const consumed = useMemo(() => {
+    const map = {};
+    decks.filter((d) => d.built).forEach((d) => {
+      [...d.main, ...d.extra, ...d.side].forEach((id) => {
+        const card = byId.get(id);
+        if (card) map[card.name] = (map[card.name] || 0) + 1;
+      });
+    });
+    return map;
+  }, [decks, byId]);
+
+  // Decks where all cards are owned
+  const completeDecks = useMemo(() => {
+    if (!byId.size) return [];
+    return formatDecks.filter((deck) => {
+      if (!deck.main.length) return false;
+      const needed = {};
+      [...deck.main, ...deck.extra, ...deck.side].forEach((id) => {
+        needed[id] = (needed[id] || 0) + 1;
+      });
+      return Object.entries(needed).every(([id, count]) => {
+        const card = byId.get(Number(id));
+        if (!card) return true;
+        const available = Math.max(0, (ownedCounts[card.name] || 0) - (consumed[card.name] || 0));
+        return available >= count;
+      });
+    });
+  }, [formatDecks, byId, ownedCounts, consumed]);
+
   // Sum total copies across all decks
   const allDecksCards = useMemo(() => {
     const totals = {};
@@ -57,9 +87,9 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
       .sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
   }, [formatDecks, byId]);
 
-  // Top-2 copies per card across built decks only
+  // Top-2 copies per card across complete decks only
   const any2CompleteCards = useMemo(() => {
-    const builtDecks = formatDecks.filter((d) => d.built);
+    const builtDecks = completeDecks;
     const countsByCard = {};
     builtDecks.forEach((deck) => {
       const idCounts = {};
@@ -79,7 +109,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
         return { card, total: sorted[0] + (sorted[1] || 0) };
       })
       .sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
-  }, [formatDecks, byId]);
+  }, [completeDecks, byId]);
 
   // Max copies per format, summed — worst case for building 1 deck from each format
   const perFormatCards = useMemo(() => {
@@ -109,7 +139,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
 
   const poolCards = mode === "any2" ? any2Cards : mode === "any2complete" ? any2CompleteCards : mode === "performat" ? perFormatCards : allDecksCards;
 
-  const builtCount = formatDecks.filter((d) => d.built).length;
+  const builtCount = completeDecks.length;
 
   const tabs = isAll
     ? [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete"], ["performat", "1 per format"]]
