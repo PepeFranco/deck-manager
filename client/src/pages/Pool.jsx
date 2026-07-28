@@ -61,7 +61,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
         totals[id].total += count;
       });
     });
-    return Object.values(totals).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+    return Object.values(totals).sort((a, b) => a.card.name.localeCompare(b.card.name));
   }, [formatDecks, byId]);
 
   // Max copies per card across any single deck
@@ -78,7 +78,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
         if (!maxByCard[id] || count > maxByCard[id].total) maxByCard[id] = { card, total: count };
       });
     });
-    return Object.values(maxByCard).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+    return Object.values(maxByCard).sort((a, b) => a.card.name.localeCompare(b.card.name));
   }, [formatDecks, byId]);
 
   // Max copies per card across any single complete deck
@@ -95,7 +95,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
         if (!maxByCard[id] || count > maxByCard[id].total) maxByCard[id] = { card, total: count };
       });
     });
-    return Object.values(maxByCard).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+    return Object.values(maxByCard).sort((a, b) => a.card.name.localeCompare(b.card.name));
   }, [completeDecks, byId]);
 
   // Top-2 copies per card (worst-case pair across all decks)
@@ -118,7 +118,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
         const sorted = [...counts].sort((a, b) => b - a);
         return { card, total: sorted[0] + (sorted[1] || 0) };
       })
-      .sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+      .sort((a, b) => a.card.name.localeCompare(b.card.name));
   }, [formatDecks, byId]);
 
   // Worst-case pool across all pairs of complete decks that can be sleeved simultaneously
@@ -146,7 +146,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
         });
       }
     }
-    return Object.values(worstCase).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+    return Object.values(worstCase).sort((a, b) => a.card.name.localeCompare(b.card.name));
   }, [completeDecks, byId, ownedCounts]);
 
   // Max copies per format, summed — worst case for building 1 deck from each format
@@ -172,7 +172,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
         totalByCard[id].total += max;
       });
     });
-    return Object.values(totalByCard).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+    return Object.values(totalByCard).sort((a, b) => a.card.name.localeCompare(b.card.name));
   }, [decks, byId]);
 
   const poolCards =
