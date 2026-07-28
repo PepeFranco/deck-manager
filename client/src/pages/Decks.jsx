@@ -272,14 +272,18 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
           >
             Incomplete
           </button>
-          {visibleDecks.some((d) => (d.records || []).length > 0) && (
-            <button
-              onClick={() => exportAllDecks(decks)}
-              className="border border-gray-300 hover:border-black text-gray-600 hover:text-black px-3 py-2 rounded-md text-sm transition-colors"
-            >
-              Export CSV
-            </button>
-          )}
+          {(() => {
+            const hasRecords = formatDecks.some((d) => (d.records || []).length > 0);
+            return (
+              <button
+                onClick={() => exportAllDecks(decks)}
+                disabled={!hasRecords}
+                className={`px-3 py-2 rounded-md text-sm transition-colors border ${hasRecords ? "border-gray-300 hover:border-black text-gray-600 hover:text-black" : "border-gray-100 text-gray-300 cursor-not-allowed"}`}
+              >
+                Export CSV
+              </button>
+            );
+          })()}
           <button
             onClick={() => { setCreating(true); setCreateError(""); }}
             className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
