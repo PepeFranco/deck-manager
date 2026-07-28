@@ -121,29 +121,33 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
       .sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
   }, [formatDecks, byId]);
 
-  // Top-2 copies per card across complete decks only
+  // Worst-case pool across all pairs of complete decks that can be sleeved simultaneously
   const any2CompleteCards = useMemo(() => {
-    const builtDecks = completeDecks;
-    const countsByCard = {};
-    builtDecks.forEach((deck) => {
-      const idCounts = {};
-      [...deck.main, ...deck.extra, ...deck.side].forEach((id) => {
-        idCounts[id] = (idCounts[id] || 0) + 1;
-      });
-      Object.entries(idCounts).forEach(([id, count]) => {
-        const card = byId.get(Number(id));
-        if (!card) return;
-        if (!countsByCard[id]) countsByCard[id] = { card, counts: [] };
-        countsByCard[id].counts.push(count);
-      });
-    });
-    return Object.values(countsByCard)
-      .map(({ card, counts }) => {
-        const sorted = [...counts].sort((a, b) => b - a);
-        return { card, total: sorted[0] + (sorted[1] || 0) };
-      })
-      .sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
-  }, [completeDecks, byId]);
+    if (completeDecks.length < 2) return [];
+    const worstCase = {};
+    for (let i = 0; i < completeDecks.length; i++) {
+      for (let j = i + 1; j < completeDecks.length; j++) {
+        const d1 = completeDecks[i];
+        const d2 = completeDecks[j];
+        const combined = {};
+        [...d1.main, ...d1.extra, ...d1.side, ...d2.main, ...d2.extra, ...d2.side].forEach((id) => {
+          combined[id] = (combined[id] || 0) + 1;
+        });
+        const canBuild = Object.entries(combined).every(([id, count]) => {
+          const card = byId.get(Number(id));
+          if (!card) return true;
+          return (ownedCounts[card.name] || 0) >= count;
+        });
+        if (!canBuild) continue;
+        Object.entries(combined).forEach(([id, count]) => {
+          const card = byId.get(Number(id));
+          if (!card) return;
+          if (!worstCase[id] || count > worstCase[id].total) worstCase[id] = { card, total: count };
+        });
+      }
+    }
+    return Object.values(worstCase).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+  }, [completeDecks, byId, ownedCounts]);
 
   // Max copies per format, summed — worst case for building 1 deck from each format
   const perFormatCards = useMemo(() => {
