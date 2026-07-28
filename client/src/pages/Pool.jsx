@@ -64,6 +64,40 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
     return Object.values(totals).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
   }, [formatDecks, byId]);
 
+  // Max copies per card across any single deck
+  const any1Cards = useMemo(() => {
+    const maxByCard = {};
+    formatDecks.forEach((deck) => {
+      const idCounts = {};
+      [...deck.main, ...deck.extra, ...deck.side].forEach((id) => {
+        idCounts[id] = (idCounts[id] || 0) + 1;
+      });
+      Object.entries(idCounts).forEach(([id, count]) => {
+        const card = byId.get(Number(id));
+        if (!card) return;
+        if (!maxByCard[id] || count > maxByCard[id].total) maxByCard[id] = { card, total: count };
+      });
+    });
+    return Object.values(maxByCard).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+  }, [formatDecks, byId]);
+
+  // Max copies per card across any single complete deck
+  const any1CompleteCards = useMemo(() => {
+    const maxByCard = {};
+    completeDecks.forEach((deck) => {
+      const idCounts = {};
+      [...deck.main, ...deck.extra, ...deck.side].forEach((id) => {
+        idCounts[id] = (idCounts[id] || 0) + 1;
+      });
+      Object.entries(idCounts).forEach(([id, count]) => {
+        const card = byId.get(Number(id));
+        if (!card) return;
+        if (!maxByCard[id] || count > maxByCard[id].total) maxByCard[id] = { card, total: count };
+      });
+    });
+    return Object.values(maxByCard).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+  }, [completeDecks, byId]);
+
   // Top-2 copies per card (worst-case pair across all decks)
   const any2Cards = useMemo(() => {
     const countsByCard = {};
@@ -137,13 +171,19 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
     return Object.values(totalByCard).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
   }, [decks, byId]);
 
-  const poolCards = mode === "any2" ? any2Cards : mode === "any2complete" ? any2CompleteCards : mode === "performat" ? perFormatCards : allDecksCards;
+  const poolCards =
+    mode === "any1" ? any1Cards :
+    mode === "any1complete" ? any1CompleteCards :
+    mode === "any2" ? any2Cards :
+    mode === "any2complete" ? any2CompleteCards :
+    mode === "performat" ? perFormatCards :
+    allDecksCards;
 
-  const builtCount = completeDecks.length;
+  const completeCount = completeDecks.length;
 
   const tabs = isAll
-    ? [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"], ["performat", "1 per format"]]
-    : [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"]];
+    ? [["all", "All decks"], ["any1", "Any 1 deck"], ["any1complete", "Any 1 complete deck"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"], ["performat", "1 per format"]]
+    : [["all", "All decks"], ["any1", "Any 1 deck"], ["any1complete", "Any 1 complete deck"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"]];
 
   return (
     <div className="space-y-6">
@@ -176,8 +216,8 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
 
       <p className="text-gray-400 text-xs">
         {poolCards.length} unique cards across{" "}
-        {mode === "any2complete"
-          ? `${builtCount} complete deck${builtCount !== 1 ? "s" : ""}`
+        {(mode === "any1complete" || mode === "any2complete")
+          ? `${completeCount} complete deck${completeCount !== 1 ? "s" : ""}`
           : `${formatDecks.length} deck${formatDecks.length !== 1 ? "s" : ""}`}
       </p>
 
