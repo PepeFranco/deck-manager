@@ -186,8 +186,8 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
   const completeCount = completeDecks.length;
 
   const tabs = isAll
-    ? [["all", "All decks"], ["any1", "Any 1 deck"], ["any1complete", "Any 1 complete deck"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"], ["performat", "1 per format"]]
-    : [["all", "All decks"], ["any1", "Any 1 deck"], ["any1complete", "Any 1 complete deck"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"]];
+    ? [["all", "All decks"], ["any1", "Any 1 deck"], ["any2", "Any 2 decks"], ["any1complete", "Any 1 complete deck"], ["any2complete", "Any 2 complete decks"], ["performat", "1 per format"]]
+    : [["all", "All decks"], ["any1", "Any 1 deck"], ["any2", "Any 2 decks"], ["any1complete", "Any 1 complete deck"], ["any2complete", "Any 2 complete decks"]];
 
   return (
     <div className="space-y-6">
@@ -219,13 +219,13 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
       </div>
 
       <p className="text-gray-400 text-xs">
-        {poolCards.length} unique cards across{" "}
+        {poolCards.length} unique cards ({poolCards.reduce((s, c) => s + c.total, 0)} total) across{" "}
         {(mode === "any1complete" || mode === "any2complete")
           ? `${completeCount} complete deck${completeCount !== 1 ? "s" : ""}`
           : `${formatDecks.length} deck${formatDecks.length !== 1 ? "s" : ""}`}
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(102px,1fr))] gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-2">
         {poolCards.flatMap(({ card, total }) => {
           const owned = Math.min(ownedCounts[card.name] || 0, total);
           const missing = total - owned;

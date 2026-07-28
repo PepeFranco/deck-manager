@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { exportAllDecks } from "../utils/exportCsv";
 import { searchCards } from "../utils/searchCards";
@@ -14,12 +14,16 @@ function CardFilterModal({ cards, format, filterCards, onUpdate, filterMissingCa
 
   const results = useMemo(() => searchCards(query, cards, format), [query, cards, format]);
 
-  const addRequired = (name) => onUpdate({ ...filterCards, [name]: (filterCards[name] || 0) + 1 });
+  const addRequired = (name) => {
+    const cur = filterCards[name] || 0;
+    if (cur >= 3) return;
+    onUpdate({ ...filterCards, [name]: cur + 1 });
+  };
   const addMissing = (name) => onUpdateMissing(new Set([...filterMissingCards, name]));
 
   const adjust = (name, delta) => {
     const next = { ...filterCards };
-    const val = (next[name] || 0) + delta;
+    const val = Math.min(3, Math.max(0, (next[name] || 0) + delta));
     if (val <= 0) delete next[name]; else next[name] = val;
     onUpdate(next);
   };
@@ -57,18 +61,24 @@ function CardFilterModal({ cards, format, filterCards, onUpdate, filterMissingCa
       </div>
 
       <div className="flex-1 overflow-y-auto flex flex-col gap-4 p-4">
+        <input
+          autoFocus
+          type="text"
+          placeholder="Search cards..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-black placeholder-gray-400 focus:outline-none focus:border-black shrink-0"
+        />
+
         {selectedEntries.length > 0 && (
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Requiring</p>
             <div className="grid grid-cols-3 gap-2">
               {selectedEntries.map(([name, count]) => (
                 <CardTile key={name} name={name} badge={`×${count}`}>
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center gap-1.5">
-                    <div className="flex gap-1">
-                      <button onClick={() => adjust(name, -1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">−</button>
-                      <button onClick={() => adjust(name, 1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">+</button>
-                    </div>
-                    <button onClick={() => adjust(name, -count)} className="text-white text-[10px] hover:text-red-300 transition-colors">remove</button>
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1 p-1">
+                    <button onClick={() => adjust(name, -1)} className="flex-1 text-[10px] bg-white hover:bg-gray-100 text-black font-bold py-1 rounded transition-colors">−</button>
+                    <button onClick={() => adjust(name, 1)} className="flex-1 text-[10px] bg-white hover:bg-gray-100 text-black font-bold py-1 rounded transition-colors">+</button>
                   </div>
                 </CardTile>
               ))}
@@ -83,8 +93,8 @@ function CardFilterModal({ cards, format, filterCards, onUpdate, filterMissingCa
             <div className="grid grid-cols-3 gap-2">
               {missingEntries.map((name) => (
                 <CardTile key={name} name={name} badge="?" badgeClass="bg-red-500">
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                    <button onClick={() => removeMissing(name)} className="text-white text-[10px] hover:text-red-300 transition-colors">remove</button>
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center gap-1.5 p-1">
+                    <button onClick={() => removeMissing(name)} className="w-full text-[10px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors">Remove</button>
                   </div>
                 </CardTile>
               ))}
@@ -93,42 +103,34 @@ function CardFilterModal({ cards, format, filterCards, onUpdate, filterMissingCa
           </div>
         )}
 
-        <input
-          autoFocus
-          type="text"
-          placeholder="Search cards..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-black placeholder-gray-400 focus:outline-none focus:border-black shrink-0"
-        />
-
         {results.length > 0 && (
-          <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Results</p>
-            <div className="grid grid-cols-3 gap-2">
-              {results.map((card) => (
-                <div key={card.id} className="relative group cursor-pointer">
-                  <div onClick={() => addRequired(card.name)} className="rounded overflow-hidden border border-gray-200 group-hover:border-black transition-colors">
-                    <img src={`/images/${card.id}`} alt={card.name} className="w-full block" style={{ aspectRatio: "421/614", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <>
+            {(selectedEntries.length > 0 || missingEntries.length > 0) && (
+              <div className="border-t border-gray-100" />
+            )}
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Results</p>
+              <div className="grid grid-cols-3 gap-2">
+                {results.map((card) => (
+                  <div key={card.id} className="relative group cursor-pointer">
+                    <div className="rounded overflow-hidden border border-gray-200">
+                      <img src={`/images/${card.id}`} alt={card.name} className="w-full block" style={{ aspectRatio: "421/614", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                    </div>
+                    {filterCards[card.name] && (
+                      <span className="absolute bottom-1 right-1 bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">×{filterCards[card.name]}</span>
+                    )}
+                    {filterMissingCards.has(card.name) && (
+                      <span className="absolute bottom-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">?</span>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center gap-1.5 p-1">
+                      <button onClick={(e) => { e.stopPropagation(); addRequired(card.name); }} className="w-full text-[10px] bg-white hover:bg-gray-100 text-black font-medium py-1 rounded transition-colors">In deck</button>
+                      <button onClick={(e) => { e.stopPropagation(); addMissing(card.name); }} className="w-full text-[10px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors">Missing</button>
+                    </div>
                   </div>
-                  {filterCards[card.name] && (
-                    <span className="absolute bottom-1 right-1 bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">×{filterCards[card.name]}</span>
-                  )}
-                  {filterMissingCards.has(card.name) && (
-                    <span className="absolute bottom-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">?</span>
-                  )}
-                  <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity flex">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); addMissing(card.name); }}
-                      className="flex-1 text-[10px] bg-red-500/90 hover:bg-red-500 text-white py-1 transition-colors"
-                    >
-                      Missing
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         )}
         {query.trim() && results.length === 0 && (
           <p className="text-gray-400 text-sm">No cards found.</p>
@@ -217,6 +219,16 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
     return missing ? new Set([missing]) : new Set();
   });
 
+  const prevFormatIdRef = useRef(format?.id);
+  useEffect(() => {
+    if (format?.id === prevFormatIdRef.current) return;
+    prevFormatIdRef.current = format?.id;
+    setFilterCards({});
+    setFilterMissingCards(new Set());
+    setCompletionFilter(null);
+    setShowFilterModal(false);
+  }, [format?.id]);
+
   const consumed = useMemo(() => buildConsumedPool(decks, byId), [decks, byId]);
 
   const formatDecks = useMemo(
@@ -235,6 +247,18 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
       result = result.filter((d) => {
         const missing = countMissing(d, byId, ownedCounts, d.built ? {} : consumed);
         return missing !== null && missing > 0;
+      });
+    } else if (completionFilter === "unplayed") {
+      result = result.filter((d) => {
+        const missing = countMissing(d, byId, ownedCounts, d.built ? {} : consumed);
+        const totalGames = (d.records || []).reduce((s, r) => s + r.wins + r.losses, 0);
+        return missing === 0 && d.main.length > 0 && totalGames === 0;
+      });
+    } else if (completionFilter === "played") {
+      result = result.filter((d) => {
+        const missing = countMissing(d, byId, ownedCounts, d.built ? {} : consumed);
+        const totalGames = (d.records || []).reduce((s, r) => s + r.wins + r.losses, 0);
+        return missing === 0 && d.main.length > 0 && totalGames > 0;
       });
     }
     if (Object.keys(filterCards).length > 0) {
@@ -314,7 +338,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
             {filterCount > 0 ? `Cards (${filterCount})` : "Filter cards"}
           </button>
           <div className="flex border border-gray-300 rounded-md overflow-hidden">
-            {[["all", "All"], ["complete", "Complete"], ["incomplete", "Incomplete"]].map(([val, label]) => (
+            {[["all", "All"], ["complete", "Complete"], ["incomplete", "Incomplete"], ["unplayed", "Unplayed"], ["played", "Played"]].map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => setCompletionFilter(val === "all" ? null : val)}
@@ -384,8 +408,8 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
 
       {visibleDecks.length === 0 && !creating && (
         <p className="text-gray-400 text-sm">
-          {showComplete
-            ? "No complete decks in this format."
+          {filterCount > 0 || completionFilter
+            ? "No decks match the current filters."
             : decks.length > 0
               ? `No decks for ${format?.label ?? "this format"}.`
               : <>No decks yet. Drop a .ydk file into the <code className="bg-gray-100 px-1 rounded">decks/</code> folder or create one here.</>}

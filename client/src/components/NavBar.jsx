@@ -2,11 +2,10 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { FORMATS } from "../data/formats";
 
 const links = [
-  { to: "/search", label: "Card Search" },
-  { to: "/decks", label: "My Decks" },
-  { to: "/collection", label: "Collection" },
+  { to: "/decks", label: "Decks" },
   { to: "/buylist", label: "Buylist" },
-  { to: "/pool", label: "Card Pool" },
+  { to: "/pool", label: "Cardpool" },
+  { to: "/search", label: "Card Search" },
 ];
 
 export default function NavBar({ formatState }) {

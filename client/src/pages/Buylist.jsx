@@ -79,7 +79,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
   const [copied, setCopied] = useState(false);
   const [addingCard, setAddingCard] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
-  const [showSimultaneous, setShowSimultaneous] = useState(false);
+  const [buyMode, setBuyMode] = useState("any1");
 
   const unbuiltDecks = decks.filter((d) => !d.built && (format?.id === "all" || !d.format || d.format === format?.id));
 
@@ -194,6 +194,47 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
       .sort((a, b) => a.short - b.short || a.name.localeCompare(b.name));
   }, [unbuiltDecks, byId, ownedCounts, consumed]);
 
+  // Group any2 pending cards by total cards missing from their nearest pair of decks
+  const any2GroupedByPriority = useMemo(() => {
+    const pairTotals = {}; // deckName -> { otherDeckName: totalMissing }
+    for (let i = 0; i < unbuiltDecks.length; i++) {
+      for (let j = i + 1; j < unbuiltDecks.length; j++) {
+        const d1 = unbuiltDecks[i];
+        const d2 = unbuiltDecks[j];
+        const combined = {};
+        [...d1.main, ...d1.extra, ...d1.side, ...d2.main, ...d2.extra, ...d2.side].forEach((id) => {
+          combined[id] = (combined[id] || 0) + 1;
+        });
+        let total = 0;
+        Object.entries(combined).forEach(([id, count]) => {
+          const card = byId.get(Number(id));
+          if (!card) return;
+          const available = Math.max(0, (ownedCounts[card.name] || 0) - (consumed[card.name] || 0));
+          total += Math.max(0, count - available);
+        });
+        if (!pairTotals[d1.name]) pairTotals[d1.name] = {};
+        if (!pairTotals[d2.name]) pairTotals[d2.name] = {};
+        pairTotals[d1.name][d2.name] = total;
+        pairTotals[d2.name][d1.name] = total;
+      }
+    }
+    const any2Pending = simultaneousCards.filter((c) => !bought.has(c.name));
+    const groups = new Map();
+    any2Pending.forEach((item) => {
+      let minPairTotal = Infinity;
+      item.decks.forEach((deckName) => {
+        const pairs = pairTotals[deckName];
+        if (pairs) Object.values(pairs).forEach((t) => { minPairTotal = Math.min(minPairTotal, t); });
+      });
+      if (!isFinite(minPairTotal)) return;
+      if (!groups.has(minPairTotal)) groups.set(minPairTotal, []);
+      groups.get(minPairTotal).push(item);
+    });
+    return [...groups.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([priority, cards]) => ({ priority, cards }));
+  }, [simultaneousCards, unbuiltDecks, byId, ownedCounts, consumed, bought]);
+
   const markBought = (name) => {
     const next = new Set(bought);
     next.add(name);
@@ -247,24 +288,40 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {pending.length > 0 && (
-            <button
-              onClick={() => {
-                const text = pending.map((c) => `${c.needed}x ${c.name}`).join("\n");
-                navigator.clipboard.writeText(text).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                });
-              }}
-              className="border border-gray-300 hover:border-black text-gray-600 hover:text-black px-3 py-2 rounded-md text-sm transition-colors"
-            >
-              {copied ? "Copied!" : "Copy list"}
-            </button>
-          )}
-          <div className="text-right">
-            <p className="text-2xl font-bold text-black">{pending.length}</p>
-            <p className="text-xs text-gray-400">cards to buy</p>
-          </div>
+          {(() => {
+            const any2Pending = simultaneousCards.filter((c) => !bought.has(c.name));
+            const activePending = buyMode === "any2" ? any2Pending : pending;
+            const copyText = buyMode === "any2"
+              ? any2Pending.map((c) => `${c.short}x ${c.name}`).join("\n")
+              : pending.map((c) => `${c.needed}x ${c.name}`).join("\n");
+            return (
+              <>
+                {activePending.length > 0 && (
+                  <button
+                    onClick={() => navigator.clipboard.writeText(copyText).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })}
+                    className="border border-gray-300 hover:border-black text-gray-600 hover:text-black px-3 py-2 rounded-md text-sm transition-colors"
+                  >
+                    {copied ? "Copied!" : "Copy list"}
+                  </button>
+                )}
+                <div className="flex border border-gray-300 rounded-md overflow-hidden">
+                  {[["any1", "Any 1 deck"], ["any2", "Any 2 decks"]].map(([m, label]) => (
+                    <button
+                      key={m}
+                      onClick={() => setBuyMode(m)}
+                      className={`px-3 py-2 text-sm transition-colors ${buyMode === m ? "bg-black text-white" : "text-gray-600 hover:text-black"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-black">{activePending.length}</p>
+                  <p className="text-xs text-gray-400">cards to buy</p>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
@@ -276,7 +333,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
         </p>
       )}
 
-      {groupedByPriority.map(({ priority, cards: groupCards }) => (
+      {buyMode === "any1" && groupedByPriority.map(({ priority, cards: groupCards }) => (
         <div key={priority} className="space-y-3">
           <div className="flex items-baseline gap-2 pb-2 border-b border-gray-100">
             <h2 className="font-semibold text-black text-sm">
@@ -284,55 +341,60 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
             </h2>
             <span className="text-xs text-gray-400">{groupCards.length} card{groupCards.length !== 1 ? "s" : ""}</span>
           </div>
-
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(153px,1fr))] gap-2">
-              {groupCards.map((item) => {
-                const card = byName.get(item.name);
-                return (
-                  <div key={item.name} className="relative group cursor-pointer" onClick={() => card && setSelectedCard(card)}>
-                    <div className="relative aspect-[421/614] bg-gray-100 rounded overflow-hidden border border-gray-200">
-                      {card ? (
-                        <img
-                          src={`/images/${card.id}`}
-                          alt={card.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = "none"; }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px] p-1 text-center leading-tight">
-                          {item.name}
-                        </div>
-                      )}
-                      <span className="absolute bottom-1 right-1 bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded leading-none">
-                        ×{item.needed}
-                      </span>
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setAddingCard(item.name); }}
-                          className="w-full text-[11px] bg-white hover:bg-gray-100 text-black font-medium py-1 rounded transition-colors"
-                        >
-                          Bought
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); markBought(item.name); }}
-                          className="w-full text-[11px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors"
-                        >
-                          Skip
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/decks?missing=${encodeURIComponent(item.name)}&incomplete=1`); }}
-                          className="w-full text-[11px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors"
-                        >
-                          Decks
-                        </button>
-                      </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-2">
+            {groupCards.map((item) => {
+              const card = byName.get(item.name);
+              return (
+                <div key={item.name} className="relative group cursor-pointer" onClick={() => card && setSelectedCard(card)}>
+                  <div className="relative aspect-[421/614] bg-gray-100 rounded overflow-hidden border border-gray-200">
+                    {card ? (
+                      <img src={`/images/${card.id}`} alt={card.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px] p-1 text-center leading-tight">{item.name}</div>
+                    )}
+                    <span className="absolute bottom-1 right-1 bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded leading-none">×{item.needed}</span>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
+                      <button onClick={(e) => { e.stopPropagation(); setAddingCard(item.name); }} className="w-full text-[11px] bg-white hover:bg-gray-100 text-black font-medium py-1 rounded transition-colors">Bought</button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate(`/decks?missing=${encodeURIComponent(item.name)}&incomplete=1`); }} className="w-full text-[11px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors">Decks</button>
                     </div>
-                    <p className="text-[10px] text-gray-600 mt-0.5 leading-tight line-clamp-2 px-0.5">{item.name}</p>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <p className="text-[10px] text-gray-600 mt-0.5 leading-tight line-clamp-2 px-0.5">{item.name}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {buyMode === "any2" && any2GroupedByPriority.map(({ priority, cards: groupCards }) => (
+        <div key={priority} className="space-y-3">
+          <div className="flex items-baseline gap-2 pb-2 border-b border-gray-100">
+            <h2 className="font-semibold text-black text-sm">
+              {priority === 1 ? "Completes a pair of decks" : `${priority} missing from nearest pair`}
+            </h2>
+            <span className="text-xs text-gray-400">{groupCards.length} card{groupCards.length !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-9 gap-2">
+            {groupCards.map((item) => {
+              const card = byName.get(item.name);
+              return (
+                <div key={item.name} className="relative group cursor-pointer" onClick={() => card && setSelectedCard(card)}>
+                  <div className="relative aspect-[421/614] bg-gray-100 rounded overflow-hidden border border-gray-200">
+                    {card ? (
+                      <img src={`/images/${card.id}`} alt={card.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px] p-1 text-center leading-tight">{item.name}</div>
+                    )}
+                    <span className="absolute bottom-1 right-1 bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded leading-none">×{item.short}</span>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
+                      <button onClick={(e) => { e.stopPropagation(); setAddingCard(item.name); }} className="w-full text-[11px] bg-white hover:bg-gray-100 text-black font-medium py-1 rounded transition-colors">Bought</button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-600 mt-0.5 leading-tight line-clamp-2 px-0.5">{item.name}</p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ))}
 
@@ -355,53 +417,6 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
         </div>
       )}
 
-      {unbuiltDecks.length > 1 && (
-        <div className="border-t border-gray-100 pt-6">
-          <button
-            onClick={() => setShowSimultaneous((v) => !v)}
-            className="flex items-center justify-between w-full text-left group"
-          >
-            <div>
-              <h2 className="text-sm font-semibold text-black">Build any 2 decks simultaneously</h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {simultaneousCards.length} additional card{simultaneousCards.length !== 1 ? "s" : ""} needed to sleeve any pair of decks
-              </p>
-            </div>
-            <span className="text-gray-400 text-sm">{showSimultaneous ? "▲" : "▼"}</span>
-          </button>
-
-          {showSimultaneous && (
-            <div className="mt-4 overflow-x-auto">
-              {simultaneousCards.length === 0 ? (
-                <p className="text-gray-400 text-sm">You already own enough copies to sleeve any 2 decks at once.</p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left">
-                      <th className="pb-3 text-gray-400 font-medium text-xs pr-4">Card</th>
-                      <th className="pb-3 text-gray-400 font-medium text-xs pr-4">Need total</th>
-                      <th className="pb-3 text-gray-400 font-medium text-xs pr-4">Own</th>
-                      <th className="pb-3 text-gray-400 font-medium text-xs pr-4">Still need</th>
-                      <th className="pb-3 text-gray-400 font-medium text-xs">Decks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {simultaneousCards.map((item) => (
-                      <tr key={item.name} className="hover:bg-gray-50">
-                        <td className="py-2.5 pr-4 text-black font-medium">{item.name}</td>
-                        <td className="py-2.5 pr-4 text-gray-600 text-xs">×{item.needed}</td>
-                        <td className="py-2.5 pr-4 text-gray-400 text-xs">×{item.owned}</td>
-                        <td className="py-2.5 pr-4 text-red-500 text-xs font-medium">×{item.short}</td>
-                        <td className="py-2.5 text-gray-400 text-xs">{item.decks.join(", ")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
