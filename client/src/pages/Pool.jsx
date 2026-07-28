@@ -112,8 +112,8 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
   const builtCount = formatDecks.filter((d) => d.built).length;
 
   const tabs = isAll
-    ? [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 built"], ["performat", "1 per format"]]
-    : [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 built"]];
+    ? [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete"], ["performat", "1 per format"]]
+    : [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete"]];
 
   return (
     <div className="space-y-6">
@@ -147,7 +147,7 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
       <p className="text-gray-400 text-xs">
         {poolCards.length} unique cards across{" "}
         {mode === "any2complete"
-          ? `${builtCount} built deck${builtCount !== 1 ? "s" : ""}`
+          ? `${builtCount} complete deck${builtCount !== 1 ? "s" : ""}`
           : `${formatDecks.length} deck${formatDecks.length !== 1 ? "s" : ""}`}
       </p>
 
