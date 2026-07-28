@@ -142,8 +142,8 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
   const builtCount = completeDecks.length;
 
   const tabs = isAll
-    ? [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete"], ["performat", "1 per format"]]
-    : [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete"]];
+    ? [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"], ["performat", "1 per format"]]
+    : [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 complete decks"]];
 
   return (
     <div className="space-y-6">
