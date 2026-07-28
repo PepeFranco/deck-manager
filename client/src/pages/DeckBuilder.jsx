@@ -3,8 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import LegalityBadge from "../components/LegalityBadge";
 import CardDetailModal from "../components/CardDetailModal";
 import { exportDeckRecords } from "../utils/exportCsv";
+import { searchCards } from "../utils/searchCards";
 import { FORMATS_BY_ID, DEFAULT_FORMAT_ID } from "../data/formats";
-import ALIASES from "../data/aliases";
 
 const SECTIONS = ["main", "extra", "side"];
 const SECTION_LABELS = { main: "DECK", extra: "EXTRA DECK", side: "SIDE" };
@@ -253,17 +253,7 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
 
   // Live search — restricted to cards legal in the active format
   useEffect(() => {
-    if (!query.trim() || cards.length === 0) { setSearchResults([]); return; }
-    const raw = query.toLowerCase();
-    const q = ALIASES[raw] ? ALIASES[raw].toLowerCase() : raw;
-    const isExtraType = (c) => c.type?.includes("Fusion") || c.type?.includes("Synchro") || c.type?.includes("XYZ");
-    setSearchResults(
-      cards
-        .filter((c) => format.getStatus(c.name, c.tcg_date) !== "not-legal")
-        .filter((c) => addSection === "extra" ? isExtraType(c) : !isExtraType(c))
-        .filter((c) => c.name.toLowerCase().includes(q))
-        .slice(0, 24)
-    );
+    setSearchResults(searchCards(query, cards, format, { section: addSection }));
   }, [query, cards, format, addSection]);
 
   const handleRemoveOne = useCallback((section, id) => {

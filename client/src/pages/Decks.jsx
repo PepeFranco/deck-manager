@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { exportAllDecks } from "../utils/exportCsv";
+import { searchCards } from "../utils/searchCards";
 
-function CardFilterModal({ cards, filterCards, onUpdate, onClose }) {
+function CardFilterModal({ cards, format, filterCards, onUpdate, filterMissingCards, onUpdateMissing, onClose }) {
   const [query, setQuery] = useState("");
 
   const byName = useMemo(() => {
@@ -11,13 +12,10 @@ function CardFilterModal({ cards, filterCards, onUpdate, onClose }) {
     return m;
   }, [cards]);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return cards.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 24);
-  }, [query, cards]);
+  const results = useMemo(() => searchCards(query, cards, format), [query, cards, format]);
 
-  const add = (name) => onUpdate({ ...filterCards, [name]: (filterCards[name] || 0) + 1 });
+  const addRequired = (name) => onUpdate({ ...filterCards, [name]: (filterCards[name] || 0) + 1 });
+  const addMissing = (name) => onUpdateMissing(new Set([...filterMissingCards, name]));
 
   const adjust = (name, delta) => {
     const next = { ...filterCards };
@@ -26,7 +24,30 @@ function CardFilterModal({ cards, filterCards, onUpdate, onClose }) {
     onUpdate(next);
   };
 
+  const removeMissing = (name) => {
+    const next = new Set(filterMissingCards);
+    next.delete(name);
+    onUpdateMissing(next);
+  };
+
   const selectedEntries = Object.entries(filterCards);
+  const missingEntries = [...filterMissingCards];
+
+  const CardTile = ({ name, badge, badgeClass, children }) => {
+    const card = byName.get(name);
+    return (
+      <div className="relative group cursor-pointer">
+        <div className={`rounded overflow-hidden border ${badgeClass ? "border-red-300" : "border-gray-200"}`}>
+          {card
+            ? <img src={`/images/${card.id}`} alt={name} className="w-full block" style={{ aspectRatio: "421/614", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            : <div className="aspect-[421/614] bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 p-1 text-center leading-tight">{name}</div>
+          }
+        </div>
+        {badge && <span className={`absolute bottom-1 right-1 text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none ${badgeClass || "bg-black"}`}>{badge}</span>}
+        {children}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -40,29 +61,35 @@ function CardFilterModal({ cards, filterCards, onUpdate, onClose }) {
           <div>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Requiring</p>
             <div className="grid grid-cols-3 gap-2">
-              {selectedEntries.map(([name, count]) => {
-                const card = byName.get(name);
-                return (
-                  <div key={name} className="relative group cursor-pointer">
-                    <div className="rounded overflow-hidden border border-gray-200">
-                      {card
-                        ? <img src={`/images/${card.id}`} alt={name} className="w-full block" style={{ aspectRatio: "421/614", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
-                        : <div className="aspect-[421/614] bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 p-1 text-center leading-tight">{name}</div>
-                      }
+              {selectedEntries.map(([name, count]) => (
+                <CardTile key={name} name={name} badge={`×${count}`}>
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center gap-1.5">
+                    <div className="flex gap-1">
+                      <button onClick={() => adjust(name, -1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">−</button>
+                      <button onClick={() => adjust(name, 1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">+</button>
                     </div>
-                    <span className="absolute bottom-1 right-1 bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">×{count}</span>
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center gap-1.5">
-                      <div className="flex gap-1">
-                        <button onClick={() => adjust(name, -1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">−</button>
-                        <button onClick={() => adjust(name, 1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">+</button>
-                      </div>
-                      <button onClick={() => adjust(name, -count)} className="text-white text-[10px] hover:text-red-300 transition-colors">remove</button>
-                    </div>
+                    <button onClick={() => adjust(name, -count)} className="text-white text-[10px] hover:text-red-300 transition-colors">remove</button>
                   </div>
-                );
-              })}
+                </CardTile>
+              ))}
             </div>
             <button onClick={() => onUpdate({})} className="mt-3 text-[10px] text-gray-400 hover:text-black w-full text-center transition-colors">Clear all</button>
+          </div>
+        )}
+
+        {missingEntries.length > 0 && (
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Missing from collection</p>
+            <div className="grid grid-cols-3 gap-2">
+              {missingEntries.map((name) => (
+                <CardTile key={name} name={name} badge="?" badgeClass="bg-red-500">
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                    <button onClick={() => removeMissing(name)} className="text-white text-[10px] hover:text-red-300 transition-colors">remove</button>
+                  </div>
+                </CardTile>
+              ))}
+            </div>
+            <button onClick={() => onUpdateMissing(new Set())} className="mt-3 text-[10px] text-gray-400 hover:text-black w-full text-center transition-colors">Clear all</button>
           </div>
         )}
 
@@ -80,13 +107,24 @@ function CardFilterModal({ cards, filterCards, onUpdate, onClose }) {
             <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Results</p>
             <div className="grid grid-cols-3 gap-2">
               {results.map((card) => (
-                <div key={card.id} onClick={() => add(card.name)} className="relative cursor-pointer group">
-                  <div className="rounded overflow-hidden border border-gray-200 group-hover:border-black transition-colors">
+                <div key={card.id} className="relative group cursor-pointer">
+                  <div onClick={() => addRequired(card.name)} className="rounded overflow-hidden border border-gray-200 group-hover:border-black transition-colors">
                     <img src={`/images/${card.id}`} alt={card.name} className="w-full block" style={{ aspectRatio: "421/614", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
                   </div>
                   {filterCards[card.name] && (
                     <span className="absolute bottom-1 right-1 bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">×{filterCards[card.name]}</span>
                   )}
+                  {filterMissingCards.has(card.name) && (
+                    <span className="absolute bottom-1 right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">?</span>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 opacity-0 group-hover:opacity-100 transition-opacity flex">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); addMissing(card.name); }}
+                      className="flex-1 text-[10px] bg-red-500/90 hover:bg-red-500 text-white py-1 transition-colors"
+                    >
+                      Missing
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -174,6 +212,10 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
     const card = searchParams.get("card");
     return card ? { [card]: 1 } : {};
   });
+  const [filterMissingCards, setFilterMissingCards] = useState(() => {
+    const missing = searchParams.get("missing");
+    return missing ? new Set([missing]) : new Set();
+  });
 
   const consumed = useMemo(() => buildConsumedPool(decks, byId), [decks, byId]);
 
@@ -204,12 +246,23 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
         });
       });
     }
+    if (filterMissingCards.size > 0) {
+      result = result.filter((d) => {
+        const allIds = [...d.main, ...d.extra, ...d.side];
+        return [...filterMissingCards].every((cardName) => {
+          const count = allIds.filter((id) => byId.get(id)?.name === cardName).length;
+          if (count === 0) return false;
+          const available = Math.max(0, (ownedCounts[cardName] || 0) - (consumed[cardName] || 0));
+          return available < count;
+        });
+      });
+    }
     return [...result].sort((a, b) => {
       const ma = countMissing(a, byId, ownedCounts, a.built ? {} : consumed) ?? 0;
       const mb = countMissing(b, byId, ownedCounts, b.built ? {} : consumed) ?? 0;
       return ma - mb;
     });
-  }, [formatDecks, completionFilter, byId, ownedCounts, consumed, filterCards]);
+  }, [formatDecks, completionFilter, byId, ownedCounts, consumed, filterCards, filterMissingCards]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -238,7 +291,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
     });
   };
 
-  const filterCount = Object.keys(filterCards).length;
+  const filterCount = Object.keys(filterCards).length + filterMissingCards.size;
 
   return (
     <div className="flex gap-6 items-start">
@@ -300,6 +353,12 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
               {count > 1 && <span className="font-bold">×{count}</span>}
               {name}
               <button onClick={() => setFilterCards((f) => { const n = { ...f }; delete n[name]; return n; })} className="text-gray-400 hover:text-black leading-none">✕</button>
+            </span>
+          ))}
+          {[...filterMissingCards].map((name) => (
+            <span key={`m-${name}`} className="flex items-center gap-1.5 bg-red-50 text-red-700 text-xs px-2.5 py-1 rounded-full border border-red-200">
+              missing: {name}
+              <button onClick={() => setFilterMissingCards((s) => { const n = new Set(s); n.delete(name); return n; })} className="text-red-300 hover:text-red-700 leading-none">✕</button>
             </span>
           ))}
         </div>
@@ -425,8 +484,11 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
         <div className="w-72 shrink-0 sticky top-0 self-start max-h-screen border-l border-gray-200 bg-white flex flex-col overflow-hidden">
           <CardFilterModal
             cards={cards}
+            format={format}
             filterCards={filterCards}
             onUpdate={setFilterCards}
+            filterMissingCards={filterMissingCards}
+            onUpdateMissing={setFilterMissingCards}
             onClose={() => setShowFilterModal(false)}
           />
         </div>

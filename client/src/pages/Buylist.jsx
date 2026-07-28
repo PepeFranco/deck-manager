@@ -329,7 +329,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
                             Skip
                           </button>
                           <button
-                            onClick={() => navigate(`/decks?card=${encodeURIComponent(item.name)}&incomplete=1`)}
+                            onClick={() => navigate(`/decks?missing=${encodeURIComponent(item.name)}&incomplete=1`)}
                             className="text-xs border border-gray-300 hover:border-black text-gray-600 hover:text-black px-2 py-1 rounded-md transition-colors"
                           >
                             Decks
@@ -377,7 +377,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
                           Skip
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/decks?card=${encodeURIComponent(item.name)}&incomplete=1`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/decks?missing=${encodeURIComponent(item.name)}&incomplete=1`); }}
                           className="w-full text-[11px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors"
                         >
                           Decks
