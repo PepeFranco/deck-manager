@@ -165,7 +165,10 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [showComplete, setShowComplete] = useState(false);
+  const [completionFilter, setCompletionFilter] = useState(() => {
+    if (searchParams.get("incomplete") === "1") return "incomplete";
+    return null;
+  });
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [filterCards, setFilterCards] = useState(() => {
     const card = searchParams.get("card");
@@ -181,10 +184,15 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
 
   const visibleDecks = useMemo(() => {
     let result = formatDecks;
-    if (showComplete) {
+    if (completionFilter === "complete") {
       result = result.filter((d) => {
         const missing = countMissing(d, byId, ownedCounts, d.built ? {} : consumed);
         return missing === 0 && d.main.length > 0;
+      });
+    } else if (completionFilter === "incomplete") {
+      result = result.filter((d) => {
+        const missing = countMissing(d, byId, ownedCounts, d.built ? {} : consumed);
+        return missing !== null && missing > 0;
       });
     }
     if (Object.keys(filterCards).length > 0) {
@@ -201,7 +209,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
       const mb = countMissing(b, byId, ownedCounts, b.built ? {} : consumed) ?? 0;
       return ma - mb;
     });
-  }, [formatDecks, showComplete, byId, ownedCounts, consumed, filterCards]);
+  }, [formatDecks, completionFilter, byId, ownedCounts, consumed, filterCards]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -248,10 +256,16 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
             {filterCount > 0 ? `Cards (${filterCount})` : "Filter cards"}
           </button>
           <button
-            onClick={() => setShowComplete((v) => !v)}
-            className={`px-3 py-2 rounded-md text-sm transition-colors border ${showComplete ? "bg-black text-white border-black" : "border-gray-300 text-gray-600 hover:border-black hover:text-black"}`}
+            onClick={() => setCompletionFilter((v) => v === "complete" ? null : "complete")}
+            className={`px-3 py-2 rounded-md text-sm transition-colors border ${completionFilter === "complete" ? "bg-black text-white border-black" : "border-gray-300 text-gray-600 hover:border-black hover:text-black"}`}
           >
-            Complete only
+            Complete
+          </button>
+          <button
+            onClick={() => setCompletionFilter((v) => v === "incomplete" ? null : "incomplete")}
+            className={`px-3 py-2 rounded-md text-sm transition-colors border ${completionFilter === "incomplete" ? "bg-black text-white border-black" : "border-gray-300 text-gray-600 hover:border-black hover:text-black"}`}
+          >
+            Incomplete
           </button>
           {visibleDecks.some((d) => (d.records || []).length > 0) && (
             <button
