@@ -146,29 +146,20 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
     return result;
   }, [unbuiltDecks, byId, ownedCounts, consumed]);
 
-  // Each pending card assigned to the nearest-to-completion deck that needs it
-  const groupedPending = useMemo(() => {
-    const sortedDecks = [...unbuiltDecks].sort(
-      (a, b) => (deckMissingCounts[a.name] || 0) - (deckMissingCounts[b.name] || 0)
-    );
-    const pendingItems = missingCards.filter((c) => !bought.has(c.name));
-    const assigned = new Set();
-    const groups = [];
-    sortedDecks.forEach((deck) => {
-      const groupCards = [];
-      pendingItems.forEach((item) => {
-        if (assigned.has(item.name)) return;
-        if (item.decks.includes(deck.name)) {
-          assigned.add(item.name);
-          groupCards.push(item);
-        }
-      });
-      if (groupCards.length > 0) {
-        groups.push({ deck, missingTotal: deckMissingCounts[deck.name] || 0, cards: groupCards });
-      }
+  // Group pending cards by how many cards their nearest deck is still missing
+  // Priority 1 = buying this card completes a deck, 2 = one more needed after, etc.
+  const groupedByPriority = useMemo(() => {
+    const groups = new Map();
+    pending.forEach((item) => {
+      const priority = Math.min(...item.decks.map((d) => deckMissingCounts[d] ?? Infinity));
+      if (!isFinite(priority)) return;
+      if (!groups.has(priority)) groups.set(priority, []);
+      groups.get(priority).push(item);
     });
-    return groups;
-  }, [unbuiltDecks, missingCards, bought, deckMissingCounts]);
+    return [...groups.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([priority, cards]) => ({ priority, cards }));
+  }, [pending, deckMissingCounts]);
 
   // Cards needed to sleeve any 2 unbuilt decks at the same time (worst-case pair per card)
   const simultaneousCards = useMemo(() => {
@@ -295,11 +286,13 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
         </p>
       )}
 
-      {groupedPending.map(({ deck, missingTotal, cards: groupCards }) => (
-        <div key={deck.name} className="space-y-3">
+      {groupedByPriority.map(({ priority, cards: groupCards }) => (
+        <div key={priority} className="space-y-3">
           <div className="flex items-baseline gap-2 pb-2 border-b border-gray-100">
-            <h2 className="font-semibold text-black text-sm">{deck.name}</h2>
-            <span className="text-xs text-gray-400">{missingTotal} missing · {groupCards.length} to buy</span>
+            <h2 className="font-semibold text-black text-sm">
+              {priority === 1 ? "Completes a deck" : `${priority} missing from nearest deck`}
+            </h2>
+            <span className="text-xs text-gray-400">{groupCards.length} card{groupCards.length !== 1 ? "s" : ""}</span>
           </div>
 
           {viewMode === "list" ? (
