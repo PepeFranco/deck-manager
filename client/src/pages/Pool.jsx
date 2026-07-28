@@ -205,12 +205,12 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
           <h1 className="text-2xl font-bold text-black">Card Pool</h1>
           {format && <p className="text-gray-400 text-sm mt-0.5">{format.label}</p>}
         </div>
-        <div className="flex border border-gray-200 rounded-md overflow-hidden text-xs">
+        <div className="flex border border-gray-200 rounded-md overflow-hidden">
           {tabs.map(([m, label]) => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`px-3 py-1.5 transition-colors ${mode === m ? "bg-black text-white" : "text-gray-500 hover:text-black"}`}
+              className={`px-3 py-2 text-sm transition-colors ${mode === m ? "bg-black text-white" : "text-gray-500 hover:text-black"}`}
             >
               {label}
             </button>

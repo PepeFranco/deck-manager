@@ -7,7 +7,7 @@ const isExtraType = (c) => c.type?.includes("Fusion") || c.type?.includes("Synch
  * Applies aliases, format legality, optional section filter, name match.
  */
 export function searchCards(query, cards, format, { limit = 24, section = null } = {}) {
-  if (!query.trim() || !cards.length) return [];
+  if (!query.trim() || !cards?.length) return [];
   const raw = query.toLowerCase();
   const q = ALIASES[raw] ? ALIASES[raw].toLowerCase() : raw;
   let results = cards;
