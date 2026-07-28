@@ -246,7 +246,12 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-black">My Decks</h1>
-          {format && <p className="text-gray-400 text-sm mt-0.5">{format.label}</p>}
+          <p className="text-gray-400 text-sm mt-0.5">
+            {visibleDecks.length !== formatDecks.length
+              ? `${visibleDecks.length} of ${formatDecks.length} decks`
+              : `${formatDecks.length} deck${formatDecks.length !== 1 ? "s" : ""}`}
+            {format && ` · ${format.label}`}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
