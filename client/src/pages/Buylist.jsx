@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import CardDetailModal from "../components/CardDetailModal";
 import LegalityBadge from "../components/LegalityBadge";
 
@@ -66,6 +67,7 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
   const { ownedCounts, addCard } = collectionState;
   const { byId, cards } = cardDb;
   const format = formatState?.format;
+  const navigate = useNavigate();
 
   const byName = useMemo(() => {
     const m = new Map();
@@ -326,6 +328,12 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
                           >
                             Skip
                           </button>
+                          <button
+                            onClick={() => navigate(`/decks?card=${encodeURIComponent(item.name)}`)}
+                            className="text-xs border border-gray-300 hover:border-black text-gray-600 hover:text-black px-2 py-1 rounded-md transition-colors"
+                          >
+                            Decks
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -367,6 +375,12 @@ export default function Buylist({ deckState, collectionState, cardDb, formatStat
                           className="w-full text-[11px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors"
                         >
                           Skip
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate(`/decks?card=${encodeURIComponent(item.name)}`); }}
+                          className="w-full text-[11px] border border-white/60 hover:border-white text-white py-1 rounded transition-colors"
+                        >
+                          Decks
                         </button>
                       </div>
                     </div>

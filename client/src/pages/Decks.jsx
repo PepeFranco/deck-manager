@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { exportAllDecks } from "../utils/exportCsv";
 
 function CardFilterModal({ cards, filterCards, onUpdate, onClose }) {
@@ -161,12 +161,16 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
   const { byId, cards } = cardDb;
   const format = formatState?.format;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [showComplete, setShowComplete] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [filterCards, setFilterCards] = useState({});
+  const [filterCards, setFilterCards] = useState(() => {
+    const card = searchParams.get("card");
+    return card ? { [card]: 1 } : {};
+  });
 
   const consumed = useMemo(() => buildConsumedPool(decks, byId), [decks, byId]);
 
