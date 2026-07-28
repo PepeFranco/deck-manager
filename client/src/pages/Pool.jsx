@@ -57,6 +57,30 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
       .sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
   }, [formatDecks, byId]);
 
+  // Top-2 copies per card across built decks only
+  const any2CompleteCards = useMemo(() => {
+    const builtDecks = formatDecks.filter((d) => d.built);
+    const countsByCard = {};
+    builtDecks.forEach((deck) => {
+      const idCounts = {};
+      [...deck.main, ...deck.extra, ...deck.side].forEach((id) => {
+        idCounts[id] = (idCounts[id] || 0) + 1;
+      });
+      Object.entries(idCounts).forEach(([id, count]) => {
+        const card = byId.get(Number(id));
+        if (!card) return;
+        if (!countsByCard[id]) countsByCard[id] = { card, counts: [] };
+        countsByCard[id].counts.push(count);
+      });
+    });
+    return Object.values(countsByCard)
+      .map(({ card, counts }) => {
+        const sorted = [...counts].sort((a, b) => b - a);
+        return { card, total: sorted[0] + (sorted[1] || 0) };
+      })
+      .sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
+  }, [formatDecks, byId]);
+
   // Max copies per format, summed — worst case for building 1 deck from each format
   const perFormatCards = useMemo(() => {
     const totalByCard = {};
@@ -83,11 +107,13 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
     return Object.values(totalByCard).sort((a, b) => b.total - a.total || a.card.name.localeCompare(b.card.name));
   }, [decks, byId]);
 
-  const poolCards = mode === "any2" ? any2Cards : mode === "performat" ? perFormatCards : allDecksCards;
+  const poolCards = mode === "any2" ? any2Cards : mode === "any2complete" ? any2CompleteCards : mode === "performat" ? perFormatCards : allDecksCards;
+
+  const builtCount = formatDecks.filter((d) => d.built).length;
 
   const tabs = isAll
-    ? [["all", "All decks"], ["any2", "Any 2 decks"], ["performat", "1 per format"]]
-    : [["all", "All decks"], ["any2", "Any 2 decks"]];
+    ? [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 built"], ["performat", "1 per format"]]
+    : [["all", "All decks"], ["any2", "Any 2 decks"], ["any2complete", "Any 2 built"]];
 
   return (
     <div className="space-y-6">
@@ -119,7 +145,10 @@ export default function Pool({ deckState, cardDb, collectionState, formatState }
       </div>
 
       <p className="text-gray-400 text-xs">
-        {poolCards.length} unique cards across {formatDecks.length} deck{formatDecks.length !== 1 ? "s" : ""}
+        {poolCards.length} unique cards across{" "}
+        {mode === "any2complete"
+          ? `${builtCount} built deck${builtCount !== 1 ? "s" : ""}`
+          : `${formatDecks.length} deck${formatDecks.length !== 1 ? "s" : ""}`}
       </p>
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(102px,1fr))] gap-2">
