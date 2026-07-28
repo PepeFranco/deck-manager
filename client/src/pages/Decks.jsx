@@ -2,6 +2,104 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { exportAllDecks } from "../utils/exportCsv";
 
+function CardFilterModal({ cards, filterCards, onUpdate, onClose }) {
+  const [query, setQuery] = useState("");
+
+  const byName = useMemo(() => {
+    const m = new Map();
+    cards.forEach((c) => m.set(c.name, c));
+    return m;
+  }, [cards]);
+
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return cards.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 24);
+  }, [query, cards]);
+
+  const add = (name) => onUpdate({ ...filterCards, [name]: (filterCards[name] || 0) + 1 });
+
+  const adjust = (name, delta) => {
+    const next = { ...filterCards };
+    const val = (next[name] || 0) + delta;
+    if (val <= 0) delete next[name]; else next[name] = val;
+    onUpdate(next);
+  };
+
+  const selectedEntries = Object.entries(filterCards);
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100 shrink-0">
+        <h2 className="text-black font-bold text-sm">Filter by cards</h2>
+        <button onClick={onClose} className="text-gray-400 hover:text-black text-xs">✕</button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto flex flex-col gap-4 p-4">
+        {selectedEntries.length > 0 && (
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Requiring</p>
+            <div className="grid grid-cols-3 gap-2">
+              {selectedEntries.map(([name, count]) => {
+                const card = byName.get(name);
+                return (
+                  <div key={name} className="relative group cursor-pointer">
+                    <div className="rounded overflow-hidden border border-gray-200">
+                      {card
+                        ? <img src={`/images/${card.id}`} alt={name} className="w-full block" style={{ aspectRatio: "421/614", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                        : <div className="aspect-[421/614] bg-gray-100 flex items-center justify-center text-[9px] text-gray-400 p-1 text-center leading-tight">{name}</div>
+                      }
+                    </div>
+                    <span className="absolute bottom-1 right-1 bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">×{count}</span>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex flex-col items-center justify-center gap-1.5">
+                      <div className="flex gap-1">
+                        <button onClick={() => adjust(name, -1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">−</button>
+                        <button onClick={() => adjust(name, 1)} className="w-6 h-6 bg-white rounded text-black font-bold text-sm flex items-center justify-center">+</button>
+                      </div>
+                      <button onClick={() => adjust(name, -count)} className="text-white text-[10px] hover:text-red-300 transition-colors">remove</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={() => onUpdate({})} className="mt-3 text-[10px] text-gray-400 hover:text-black w-full text-center transition-colors">Clear all</button>
+          </div>
+        )}
+
+        <input
+          autoFocus
+          type="text"
+          placeholder="Search cards..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-black placeholder-gray-400 focus:outline-none focus:border-black shrink-0"
+        />
+
+        {results.length > 0 && (
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Results</p>
+            <div className="grid grid-cols-3 gap-2">
+              {results.map((card) => (
+                <div key={card.id} onClick={() => add(card.name)} className="relative cursor-pointer group">
+                  <div className="rounded overflow-hidden border border-gray-200 group-hover:border-black transition-colors">
+                    <img src={`/images/${card.id}`} alt={card.name} className="w-full block" style={{ aspectRatio: "421/614", objectFit: "cover" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  </div>
+                  {filterCards[card.name] && (
+                    <span className="absolute bottom-1 right-1 bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded leading-none">×{filterCards[card.name]}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {query.trim() && results.length === 0 && (
+          <p className="text-gray-400 text-sm">No cards found.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Returns { cardName -> totalCopiesConsumedByBuiltDecks }
 function buildConsumedPool(decks, byId) {
   const consumed = {};
@@ -60,13 +158,15 @@ function countMissing(deck, byId, ownedCounts, consumed) {
 export default function Decks({ deckState, collectionState, cardDb, formatState }) {
   const { decks, createDeck, deleteDeck, updateDeck } = deckState;
   const { ownedCounts } = collectionState;
-  const { byId } = cardDb;
+  const { byId, cards } = cardDb;
   const format = formatState?.format;
   const navigate = useNavigate();
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [showComplete, setShowComplete] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterCards, setFilterCards] = useState({});
 
   const consumed = useMemo(() => buildConsumedPool(decks, byId), [decks, byId]);
 
@@ -83,12 +183,21 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
         return missing === 0 && d.main.length > 0;
       });
     }
+    if (Object.keys(filterCards).length > 0) {
+      result = result.filter((d) => {
+        const allIds = [...d.main, ...d.extra, ...d.side];
+        return Object.entries(filterCards).every(([cardName, required]) => {
+          const count = allIds.filter((id) => byId.get(id)?.name === cardName).length;
+          return count >= required;
+        });
+      });
+    }
     return [...result].sort((a, b) => {
       const ma = countMissing(a, byId, ownedCounts, a.built ? {} : consumed) ?? 0;
       const mb = countMissing(b, byId, ownedCounts, b.built ? {} : consumed) ?? 0;
       return ma - mb;
     });
-  }, [formatDecks, showComplete, byId, ownedCounts, consumed]);
+  }, [formatDecks, showComplete, byId, ownedCounts, consumed, filterCards]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -117,14 +226,23 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
     });
   };
 
+  const filterCount = Object.keys(filterCards).length;
+
   return (
-    <div className="space-y-6">
+    <div className="flex gap-6 items-start">
+      <div className="flex-1 min-w-0 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-black">My Decks</h1>
           {format && <p className="text-gray-400 text-sm mt-0.5">{format.label}</p>}
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowFilterModal(true)}
+            className={`px-3 py-2 rounded-md text-sm transition-colors border ${filterCount > 0 ? "bg-black text-white border-black" : "border-gray-300 text-gray-600 hover:border-black hover:text-black"}`}
+          >
+            {filterCount > 0 ? `Cards (${filterCount})` : "Filter cards"}
+          </button>
           <button
             onClick={() => setShowComplete((v) => !v)}
             className={`px-3 py-2 rounded-md text-sm transition-colors border ${showComplete ? "bg-black text-white border-black" : "border-gray-300 text-gray-600 hover:border-black hover:text-black"}`}
@@ -147,6 +265,18 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
           </button>
         </div>
       </div>
+
+      {filterCount > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(filterCards).map(([name, count]) => (
+            <span key={name} className="flex items-center gap-1.5 bg-gray-100 text-black text-xs px-2.5 py-1 rounded-full">
+              {count > 1 && <span className="font-bold">×{count}</span>}
+              {name}
+              <button onClick={() => setFilterCards((f) => { const n = { ...f }; delete n[name]; return n; })} className="text-gray-400 hover:text-black leading-none">✕</button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {creating && (
         <div className="space-y-1">
@@ -262,6 +392,18 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
           );
         })}
       </div>
+      </div>
+
+      {showFilterModal && (
+        <div className="w-72 shrink-0 sticky top-0 self-start max-h-screen border-l border-gray-200 bg-white flex flex-col overflow-hidden">
+          <CardFilterModal
+            cards={cards}
+            filterCards={filterCards}
+            onUpdate={setFilterCards}
+            onClose={() => setShowFilterModal(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
