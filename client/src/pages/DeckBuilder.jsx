@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import LegalityBadge from "../components/LegalityBadge";
 import CardDetailModal from "../components/CardDetailModal";
@@ -191,42 +191,27 @@ function DeckSection({ label, ids, count, byId, ownedCounts, onRemove, format })
 }
 
 function AlphaView({ main, side, extra, byId, ownedCounts, onRemoveMain, onRemoveSide, onRemoveExtra, format }) {
-  const alphaSorted = (ids) => [...ids].sort((a, b) => {
+  const combined = useMemo(() => [...main, ...extra, ...side].sort((a, b) => {
     const ca = byId.get(a), cb = byId.get(b);
     return (ca?.name || "").localeCompare(cb?.name || "");
-  });
-
-  const combined = useMemo(() => alphaSorted([...main, ...side]), [main, side, byId]);
-  const sortedExtra = useMemo(() => sortExtraIds([...extra], byId), [extra, byId]);
+  }), [main, extra, side, byId]);
 
   const onRemove = (id) => {
     if (main.includes(id)) onRemoveMain(id);
+    else if (extra.includes(id)) onRemoveExtra(id);
     else onRemoveSide(id);
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <DeckSection
-        label={`ALL (${main.length + side.length})`}
-        ids={combined}
-        count={main.length + side.length}
-        byId={byId}
-        ownedCounts={ownedCounts}
-        onRemove={onRemove}
-        format={format}
-      />
-      {extra.length > 0 && (
-        <DeckSection
-          label={SECTION_LABELS.extra}
-          ids={sortedExtra}
-          count={extra.length}
-          byId={byId}
-          ownedCounts={ownedCounts}
-          onRemove={(id) => onRemoveExtra(id)}
-          format={format}
-        />
-      )}
-    </div>
+    <DeckSection
+      label={`ALL (${main.length + extra.length + side.length})`}
+      ids={combined}
+      count={main.length + extra.length + side.length}
+      byId={byId}
+      ownedCounts={ownedCounts}
+      onRemove={onRemove}
+      format={format}
+    />
   );
 }
 
@@ -244,12 +229,48 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
   const [searchResults, setSearchResults] = useState([]);
   const [selectedCard, setSelectedCard] = useState(null);
   const [panelOpen, setPanelOpen] = useState(true);
-  const [panelTab, setPanelTab] = useState("search"); // "search" | "records"
-  const [viewMode, setViewMode] = useState("grid"); // "grid" | "alpha"
+  const [panelTab, setPanelTab] = useState("search");
+  const [viewMode, setViewMode] = useState("grid");
   const [recordForm, setRecordForm] = useState({ date: new Date().toISOString().slice(0, 10), wins: "", losses: "", note: "" });
   const [addingRecord, setAddingRecord] = useState(false);
+  const [notesValue, setNotesValue] = useState("");
+  const notesInitializedRef = useRef(false);
+  const deckRef = useRef(null);
+  const updateDeckRef = useRef(null);
 
   const deck = getDeck(name);
+  deckRef.current = deck;
+  updateDeckRef.current = updateDeck;
+
+  // Initialize notesValue once when deck first loads — never reset after that
+  useEffect(() => {
+    if (!notesInitializedRef.current && deck) {
+      notesInitializedRef.current = true;
+      setNotesValue(deck.notes || "");
+    }
+  }, [deck]);
+
+  // Debounced auto-save: fires 600ms after user stops typing
+  useEffect(() => {
+    if (!notesInitializedRef.current) return;
+    const d = deckRef.current;
+    if (!d || notesValue === (d.notes || "")) return;
+    const timer = setTimeout(() => {
+      const latest = deckRef.current;
+      if (latest) updateDeckRef.current(name, { ...latest, notes: notesValue });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [notesValue, name]);
+
+  const switchTab = (tab) => {
+    if (panelTab === "notes" && tab !== "notes") {
+      const d = deckRef.current;
+      if (d && notesValue !== (d.notes || "")) {
+        updateDeckRef.current(name, { ...d, notes: notesValue });
+      }
+    }
+    setPanelTab(tab);
+  };
 
   // Live search — restricted to cards legal in the active format
   useEffect(() => {
@@ -427,7 +448,7 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
             {["search", "records", "notes"].map((tab) => (
               <button
                 key={tab}
-                onClick={() => setPanelTab(tab)}
+                onClick={() => switchTab(tab)}
                 className={`flex-1 py-3 text-xs font-medium capitalize transition-colors ${
                   panelTab === tab ? "text-black border-b-2 border-black" : "text-gray-400 hover:text-black"
                 }`}
@@ -513,8 +534,8 @@ export default function DeckBuilder({ deckState, collectionState, cardDb, format
               <textarea
                 className="w-full flex-1 resize-none border border-gray-300 rounded-md px-3 py-2 text-sm text-black placeholder-gray-400 focus:outline-none focus:border-black"
                 placeholder="Add notes about this deck — strategy, matchups, card choices..."
-                defaultValue={deck.notes || ""}
-                onBlur={(e) => updateDeck(name, { ...deck, notes: e.target.value })}
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
               />
             </div>
           )}

@@ -59,10 +59,13 @@ app.get('/api/cards/search', (req, res) => {
 
 // Return all cards (for client-side live filtering)
 app.get('/api/cards/all', (req, res) => {
-  const slim = ALL_CARDS.map(({ id, name, type, frameType, desc, race, attribute, archetype, level, atk, def, scale, linkval, tcg_date, sets, card_images }) => ({
-    id, name, type, frameType, desc, race, attribute, archetype, level, atk, def, scale, linkval, tcg_date, sets,
-    card_images: card_images.slice(0, 1),
-  }));
+  const slim = ALL_CARDS.map(({ id, name, type, frameType, desc, race, attribute, archetype, level, atk, def, scale, linkval, tcg_date, sets, card_images }) => {
+    const altIds = card_images.slice(1).map(img => {
+      const m = img.image_url.match(/cards\/(\d+)\.jpg/);
+      return m ? Number(m[1]) : null;
+    }).filter(Boolean);
+    return { id, name, type, frameType, desc, race, attribute, archetype, level, atk, def, scale, linkval, tcg_date, sets, card_images: card_images.slice(0, 1), altIds };
+  });
   res.json(slim);
 });
 

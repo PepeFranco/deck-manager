@@ -5,6 +5,7 @@ const links = [
   { to: "/decks", label: "Decks" },
   { to: "/buylist", label: "Buylist" },
   { to: "/pool", label: "Cardpool" },
+  { to: "/collection", label: "Collection" },
   { to: "/search", label: "Card Search" },
 ];
 

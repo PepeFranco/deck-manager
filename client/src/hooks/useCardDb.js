@@ -20,7 +20,10 @@ export function useCardDb() {
 
   const byId = useMemo(() => {
     const map = new Map();
-    cards.forEach((c) => map.set(c.id, c));
+    cards.forEach((c) => {
+      map.set(c.id, c);
+      (c.altIds || []).forEach((altId) => map.set(altId, c));
+    });
     return map;
   }, [cards]);
 

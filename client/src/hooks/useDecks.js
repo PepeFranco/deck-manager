@@ -76,6 +76,26 @@ export function useDecks(cardDb) {
 
   const getDeck = useCallback((name) => decks.find((d) => d.name === name), [decks]);
 
+  const copyDeck = useCallback(async (name) => {
+    const deck = decks.find((d) => d.name === name);
+    if (!deck) return;
+    let copyName = `${name} Copy`;
+    let i = 2;
+    while (decks.some((d) => d.name === copyName)) copyName = `${name} Copy ${i++}`;
+    const res = await fetch('/api/decks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: copyName, main: deck.main, extra: deck.extra, side: deck.side, ...(deck.format && { format: deck.format }) }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to copy deck');
+    }
+    const copied = await res.json();
+    await fetchDecks();
+    return copied.name;
+  }, [decks, fetchDecks]);
+
   // Add a card ID to a section. Enforces max 3 copies across all sections.
   const addCard = useCallback(async (deckName, section, cardId) => {
     const deck = decks.find((d) => d.name === deckName);
@@ -94,5 +114,5 @@ export function useDecks(cardDb) {
     await updateDeck(deckName, updated);
   }, [decks, updateDeck]);
 
-  return { decks, loading, error, fetchDecks, createDeck, updateDeck, deleteDeck, getDeck, addCard, removeCard };
+  return { decks, loading, error, fetchDecks, createDeck, updateDeck, deleteDeck, getDeck, addCard, removeCard, copyDeck };
 }

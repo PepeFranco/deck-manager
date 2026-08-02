@@ -196,7 +196,7 @@ function countMissing(deck, byId, ownedCounts, consumed) {
 }
 
 export default function Decks({ deckState, collectionState, cardDb, formatState }) {
-  const { decks, createDeck, deleteDeck, updateDeck } = deckState;
+  const { decks, createDeck, deleteDeck, updateDeck, copyDeck } = deckState;
   const { ownedCounts } = collectionState;
   const { byId, cards } = cardDb;
   const format = formatState?.format;
@@ -431,7 +431,7 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
               href={deck.format
                 ? `/decks/${deck.format}/${encodeURIComponent(deck.name)}`
                 : `/decks/${encodeURIComponent(deck.name)}`}
-              onClick={(e) => { e.preventDefault(); navigate(deck.format
+              onClick={(e) => { if (e.ctrlKey || e.metaKey || e.shiftKey) return; e.preventDefault(); navigate(deck.format
                 ? `/decks/${deck.format}/${encodeURIComponent(deck.name)}`
                 : `/decks/${encodeURIComponent(deck.name)}`); }}
               className={`block border rounded-lg p-5 hover:border-black transition-colors cursor-pointer group bg-white no-underline ${deck.built ? "border-black" : "border-gray-200"}`}
@@ -488,6 +488,12 @@ export default function Decks({ deckState, collectionState, cardDb, formatState 
                     }`}
                   >
                     {deck.built ? "Unbuild" : "Build"}
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyDeck(deck.name); }}
+                    className="text-gray-300 hover:text-black text-xs transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    Copy
                   </button>
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Delete "${deck.name}"?`)) deleteDeck(deck.name); }}
