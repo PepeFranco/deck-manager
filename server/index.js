@@ -399,6 +399,13 @@ app.delete('/api/decks/:name', (req, res) => {
   }
 });
 
+// Serve built React app in production
+const CLIENT_DIST = path.join(__dirname, '../client/dist');
+if (fs.existsSync(CLIENT_DIST)) {
+  app.use(express.static(CLIENT_DIST));
+  app.get('*', (req, res) => res.sendFile(path.join(CLIENT_DIST, 'index.html')));
+}
+
 app.listen(PORT, () =>
   console.log(`Server on http://localhost:${PORT}`)
 );

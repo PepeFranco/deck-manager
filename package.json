@@ -7,7 +7,9 @@
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "build": "npm run build --prefix client",
     "db:update": "npm run db:update --prefix server",
-    "db:images": "npm run db:images --prefix server"
+    "db:images": "npm run db:images --prefix server",
+    "deploy:data": "rsync -avz --progress server/data/cards.json millenium-eye:~/deck-manager/server/data/ && rsync -avz --progress server/data/images/ millenium-eye:~/deck-manager/server/data/images/ && rsync -avz --progress decks/ millenium-eye:~/deck-manager/decks/ && rsync -avz ../ygo-collection/data/collection.json millenium-eye:~/ygo-collection/data/",
+    "deploy:code": "git push && ssh millenium-eye 'cd ~/deck-manager && git pull && npm run build && pm2 restart deck-manager'"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
